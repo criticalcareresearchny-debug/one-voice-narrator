@@ -196,10 +196,12 @@ export default {
         if(new TextEncoder().encode(raw).byteLength>MAX_REQUEST_BYTES)return error("Request too large",413);
         let parsed, data;
         try {parsed=JSON.parse(raw);data=normalizeInput(parsed);}catch(e){return error(e.message,400);}
-        // Hard security gate: unpublished narration must NEVER be dispatched
-        // to the public source-code repo, even if GitHub credentials permit it.
+        // Explicit owner opt-in is required before using publicly visible
+        // workflow inputs, logs, and artifacts for narration processing.
         const repo=await ghJson(env,"");
-        if(repo.private!==true)return error("Narration processor must be a private GitHub repository",503);
+        if(repo.private!==true && env.ALLOW_PUBLIC_PROCESSOR!=="true") {
+          return error("Public processor is disabled: set ALLOW_PUBLIC_PROCESSOR=true to acknowledge public scripts and MP3s",503);
+        }
         const response=await ghRequest(env,"/actions/workflows/"+WORKFLOW+"/dispatches",{
           method:"POST",
           body:JSON.stringify({ref:"main",inputs:data})
