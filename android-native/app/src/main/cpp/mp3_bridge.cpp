@@ -5,7 +5,9 @@
 #include <cstdio>
 #include <memory>
 #include <vector>
+extern "C" {
 #include "layer3.h"
+}
 
 struct Encoder {
     shine_t shine = nullptr;
