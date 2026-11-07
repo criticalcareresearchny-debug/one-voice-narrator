@@ -6,6 +6,13 @@
   <meta name="theme-color" content="#111a2c">
   <meta name="description" content="Free, private, client-side text-to-speech narration with downloadable MP3 audio. No account or per-character fees.">
   <title>One Voice — Free Narration Studio</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="./icon.svg">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="One Voice">
   <style>
     :root {color-scheme:dark; --bg:#101827; --panel:#182338; --panel2:#1e2c43; --line:#344258; --ink:#eff4fb; --muted:#acbed3; --mint:#78e3ca; --mint-ink:#0d2b27; --gold:#f8c981; --danger:#f4a4a4;}
     * {box-sizing:border-box}
@@ -74,6 +81,9 @@
       <div><p class="eyebrow">A little studio, just for narration</p><h1>One Voice</h1></div>
     </header>
     <p class="sub">Paste your video script. Create natural-sounding narration. Download one MP3. No account, no credits, and no per-character quota.</p>
+    <div id="installHelper" class="helper" style="display:none;margin:0 0 15px">
+      <button type="button" id="installButton" class="secondary">⬇ Install One Voice on this phone</button>
+    </div>
 
     <section class="card" aria-label="Narration editor">
       <div class="fieldheading"><label for="script">Your narration script</label><span id="count" class="meta">0 characters · 0 words</span></div>
@@ -131,6 +141,30 @@
   <script>
     "use strict";
     const $ = (id) => document.getElementById(id);
+    // Enable installation from Android Chrome's menu, with an in-page prompt when supported.
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(err => console.warn("PWA offline-shell registration failed:", err));
+      });
+    }
+    let pendingInstall = null;
+    const installHelper = $("installHelper");
+    window.addEventListener("beforeinstallprompt", event => {
+      event.preventDefault();
+      pendingInstall = event;
+      installHelper.style.display = "flex";
+    });
+    $("installButton").addEventListener("click", () => {
+      if (!pendingInstall) return;
+      const prompt = pendingInstall;
+      pendingInstall = null;
+      installHelper.style.display = "none";
+      void prompt.prompt();
+    });
+    window.addEventListener("appinstalled", () => {
+      pendingInstall = null;
+      installHelper.style.display = "none";
+    });
     const elements = {script:$("script"), count:$("count"), estimate:$("estimate"), voice:$("voice"), voiceDesc:$("voiceDesc"), preview:$("previewBtn"), filename:$("filename"), generate:$("generateBtn"), stop:$("stopBtn"), progressBox:$("progressBox"), progress:$("progress"), progressLabel:$("progressLabel"), percentage:$("percentage"), detail:$("detail"), message:$("message"), output:$("output"), outputTitle:$("outputTitle"), outputInfo:$("outputInfo"), player:$("player"), download:$("download")};
     const MODEL_SAMPLE_RATE = 24000;
     const MP3_KBPS = 96;
