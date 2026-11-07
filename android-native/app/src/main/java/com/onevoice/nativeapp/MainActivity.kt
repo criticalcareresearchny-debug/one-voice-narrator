@@ -94,13 +94,60 @@ class MainActivity : Activity() {
         content.addView(script, LinearLayout.LayoutParams(-1, -2))
 
         content.addView(text("Choose your narrator", 16f, ink, true).also { spacing(it, 20, 6) })
-        narrator = Spinner(this)
+        narrator = Spinner(this, null, android.R.attr.spinnerStyle, Spinner.MODE_DROPDOWN)
         val options = VoiceCatalog.voices.map { it.label }
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, options)
+        // Android's default spinner row uses dark text from our light system theme.
+        // Draw both the selected item and every popup option explicitly in high-contrast colors.
+        val adapter = object : ArrayAdapter<String>(
+            this@MainActivity, android.R.layout.simple_spinner_item, options
+        ) {
+            override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View {
+                val line = LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(14), dp(9), dp(14), dp(9))
+                    minimumHeight = dp(54)
+                    setBackgroundColor(card)
+                }
+                val voiceLabel = TextView(this@MainActivity).apply {
+                    text = getItem(position).orEmpty()
+                    setTextColor(ink)
+                    textSize = 17f
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    isSingleLine = false
+                    contentDescription = "Narrator: " + text
+                }
+                line.addView(voiceLabel, LinearLayout.LayoutParams(0, -2, 1f))
+                line.addView(TextView(this@MainActivity).apply {
+                    text = "▾"
+                    setTextColor(mint)
+                    textSize = 22f
+                    gravity = Gravity.CENTER
+                    contentDescription = "Open voice options"
+                }, LinearLayout.LayoutParams(dp(30), -2))
+                return line
+            }
+
+            override fun getDropDownView(position: Int, convertView: View?, parent: android.view.ViewGroup): View {
+                return TextView(this@MainActivity).apply {
+                    text = getItem(position).orEmpty()
+                    setTextColor(ink)
+                    textSize = 17f
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    setBackgroundColor(if (position % 2 == 0) card else backdrop)
+                    setPadding(dp(18), dp(14), dp(16), dp(14))
+                    minimumHeight = dp(54)
+                    isSingleLine = false
+                    contentDescription = "Select " + text
+                }
+            }
+        }
         narrator.adapter = adapter
+        narrator.setPopupBackgroundDrawable(android.graphics.drawable.ColorDrawable(card))
+        narrator.contentDescription = "Choose your English narrator"
         val settings = getSharedPreferences("settings", MODE_PRIVATE)
         narrator.setSelection(settings.getInt("voice", 0).coerceIn(options.indices))
-        content.addView(narrator)
+        content.addView(narrator, LinearLayout.LayoutParams(-1, -2))
 
         content.addView(text("Narration speed", 16f, ink, true).also { spacing(it, 18, 4) })
         speedLabel = text("1.00× — Normal", 15f, mint, true)
