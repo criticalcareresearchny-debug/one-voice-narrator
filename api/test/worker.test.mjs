@@ -74,7 +74,7 @@ test("health is available, but the rest requires a Bearer token",async()=>{
  assert.equal((await yes.json()).voices.length,6);
 });
 
-test("new narration dispatches only to a private GitHub repository",async()=>{
+test("new narration dispatches to private or explicitly approved public GitHub repository",async()=>{
  const fake=mocks();
  await withMock(fake,async()=>{
    const response=await worker.fetch(req("/v1/narrations",{
@@ -97,6 +97,14 @@ test("new narration dispatches only to a private GitHub repository",async()=>{
    }),secrets);
    assert.equal(response.status,503);
    assert.equal(publicRepo.records.filter(x=>x.method==="POST").length,0);
+ });
+ const publicApproved=mocks({privateRepo:false});
+ await withMock(publicApproved,async()=>{
+   const response=await worker.fetch(req("/v1/narrations",{
+      method:"POST",body:JSON.stringify({text:"Public narration script",voice:"af_heart"})
+   }),{...secrets,ALLOW_PUBLIC_PROCESSOR:"true"});
+   assert.equal(response.status,202);
+   assert.equal(publicApproved.records.filter(x=>x.method==="POST").length,1);
  });
 });
 
