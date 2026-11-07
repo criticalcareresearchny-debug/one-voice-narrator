@@ -27,16 +27,16 @@ jobs:
           echo "APK size: ${SIZE} bytes"
           test "$SIZE" -gt 150000000
           mv release-assets/app-debug.apk release-assets/OneVoice-Native-Readable-Voices-API-Connect.apk
-          sha256sum release-assets/OneVoice-Native-API-Connect.apk
+          sha256sum release-assets/OneVoice-Native-Readable-Voices-API-Connect.apk
       - name: Create direct APK download on GitHub Releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="onevoice-native-api-connect-v0.1.1-beta2"
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$tag" release-assets/OneVoice-Native-API-Connect.apk --clobber --repo "$GITHUB_REPOSITORY"
+            gh release upload "$tag" release-assets/OneVoice-Native-Readable-Voices-API-Connect.apk --clobber --repo "$GITHUB_REPOSITORY"
           else
-            gh release create "$tag" release-assets/OneVoice-Native-API-Connect.apk \
+            gh release create "$tag" release-assets/OneVoice-Native-Readable-Voices-API-Connect.apk \
               --repo "$GITHUB_REPOSITORY" \
               --title "One Voice Native — Readable Voices + API Connect beta 0.1.1" \
               --notes "Updated beta with WHITE high-contrast English narrator names and mint dropdown arrow, plus all six Kokoro voices, 0.70–1.50x speed, local MP3, Android foreground processing, Share target and user-confirmed Android API Connect. The native APK is debug-signed on GitHub; its signature may differ from the earlier beta. If Android refuses an update, copy your unsaved script somewhere safe, uninstall only the earlier One Voice Native app, then install this version. MP3s in Downloads / One Voice remain. Keep the separate PWA for now. Actual audio production and API callbacks on-device remain beta tests."
