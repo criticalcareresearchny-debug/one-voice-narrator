@@ -7,6 +7,7 @@ Do not submit confidential scripts through the public repository's workflow inpu
 from __future__ import annotations
 import os
 import re
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -27,8 +28,19 @@ OUT_DIR = Path("cloud-output")
 
 
 def checked_settings():
-    raw = os.environ.get("ONEVOICE_TEXT", "")
-    text = raw.strip()
+    # Read the official workflow_dispatch event file directly. Do not pass
+    # narration text through job/step env, which GitHub may print in logs.
+    payload_path = os.environ.get("GITHUB_EVENT_PATH", "")
+    payload = json.loads(Path(payload_path).read_text()) if payload_path else {}
+    inputs = payload.get("inputs") or {}
+    if not isinstance(inputs, dict):
+        raise ValueError("Invalid workflow event inputs.")
+    sample = ("Welcome to One Voice. This is a short cloud narration "
+              "demonstration, prepared entirely outside your phone.")
+    raw = inputs.get("text", "")
+    if not raw and os.environ.get("GITHUB_EVENT_NAME") == "push":
+        raw = sample
+    text = str(raw).strip()
     if not text:
         raise ValueError("No narration text was provided.")
     if len(text) > MAX_SCRIPT_CHARS:
@@ -36,13 +48,13 @@ def checked_settings():
             f"Cloud input is limited to {MAX_SCRIPT_CHARS:,} characters per job. "
             "Split longer work into several jobs."
         )
-    voice = os.environ.get("ONEVOICE_VOICE", "af_heart")
+    voice = str(inputs.get("voice") or "af_heart")
     if voice not in VOICES:
         raise ValueError("Unsupported English narrator.")
-    speed = float(os.environ.get("ONEVOICE_SPEED", "1.0"))
+    speed = float(inputs.get("speed") or "1.0")
     if not np.isfinite(speed) or not (0.7 <= speed <= 1.5):
         raise ValueError("Speed must be between 0.70 and 1.50.")
-    raw_name = os.environ.get("ONEVOICE_FILENAME", "onevoice-narration")[:100]
+    raw_name = str(inputs.get("filename") or "onevoice-narration")[:100]
     name = re.sub(r"[^A-Za-z0-9._-]", "-", raw_name).strip(".-_") or "onevoice-narration"
     return text, voice, speed, name
 
