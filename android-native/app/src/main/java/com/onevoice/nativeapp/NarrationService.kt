@@ -49,7 +49,15 @@ class NarrationService : Service() {
             status("Stopping after current section", -1)
             return START_NOT_STICKY
         }
-        if (intent?.action != START || active) return START_NOT_STICKY
+        if (intent?.action != START) return START_NOT_STICKY
+        if (active) {
+            ApiContract.sendResult(
+                this, ApiContract.readCallback(intent),
+                intent.getStringExtra(ApiContract.EXTRA_REQUEST_ID),
+                ApiContract.STATUS_BUSY, message = "One Voice is already generating a recording"
+            )
+            return START_NOT_STICKY
+        }
         active = true
         cancel.set(false)
         val initial = notification("Preparing narration", -1)
@@ -58,14 +66,29 @@ class NarrationService : Service() {
         } else {
             startForeground(notificationId, initial)
         }
+        val callback = ApiContract.readCallback(intent)
+        val requestId = intent.getStringExtra(ApiContract.EXTRA_REQUEST_ID)
         worker.execute {
+            var completedUri: Uri? = null
+            var completionStatus = ApiContract.STATUS_ERROR
+            var failureMessage: String? = null
             try {
-                generate(intent)
+                completedUri = generate(intent)
+                completionStatus = if (completedUri != null) {
+                    ApiContract.STATUS_COMPLETED
+                } else {
+                    ApiContract.STATUS_CANCELLED
+                }
             } catch (err: Exception) {
-                status("Error: " + (err.message ?: err.javaClass.simpleName), -1, "error")
+                failureMessage = err.message ?: err.javaClass.simpleName
+                status("Error: " + failureMessage, -1, "error")
             } catch (err: UnsatisfiedLinkError) {
-                status("Native voice library missing: " + (err.message ?: "unknown"), -1, "error")
+                failureMessage = "Native speech engine not available"
+                status("Native voice library missing", -1, "error")
             } finally {
+                ApiContract.sendResult(
+                    this, callback, requestId, completionStatus, completedUri, failureMessage
+                )
                 active = false
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
@@ -74,7 +97,7 @@ class NarrationService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun generate(intent: Intent) {
+    private fun generate(intent: Intent): Uri? {
         val script = File(filesDir, "onevoice-script.txt").takeIf { it.isFile }?.readText()?.trim().orEmpty()
         if (script.isEmpty()) throw IllegalArgumentException("Your narration script is empty.")
         val voiceIndex = intent.getIntExtra(EXTRA_VOICE, 0).coerceIn(0, VoiceCatalog.voices.lastIndex)
@@ -88,7 +111,7 @@ class NarrationService : Service() {
         if (sections.isEmpty()) throw IllegalArgumentException("No text to narrate.")
         status("Preparing voice files", 0)
         val dir = ModelStore.prepare(this) { status(it, 0) }
-        if (cancel.get()) {status("Cancelled", -1, "cancelled"); return}
+        if (cancel.get()) {status("Cancelled", -1, "cancelled"); return null}
         val modelFile = File(dir, "model.int8.onnx")
         val voicesFile = File(dir, "voices.bin")
         val tokensFile = File(dir, "tokens.txt")
@@ -131,7 +154,7 @@ class NarrationService : Service() {
             }
             if (cancel.get()) {
                 status("Cancelled; no recording saved", -1, "cancelled")
-                return
+                return null
             }
             if (!tmp.exists() || tmp.length() < 1000L) throw IllegalStateException("The recording was empty.")
             status("Saving MP3 to Downloads", 99)
@@ -141,6 +164,7 @@ class NarrationService : Service() {
                 .putString("lastName", name + ".mp3")
                 .apply()
             status("MP3 ready — " + name + ".mp3", 100, "completed")
+            return uri
         } finally {
             tts?.release()
             tmp.delete()

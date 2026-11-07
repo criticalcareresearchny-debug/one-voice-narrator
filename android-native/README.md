@@ -69,3 +69,16 @@ Do not place a GitHub access token inside Android source or a public repository.
 - Long recording is CPU-intensive. The foreground service lets you switch
   apps but does not make speech generation inherently faster.
 - Debug build is a beta and not yet verified on the phone.
+
+## API Connect
+
+This Android APK accepts scripts through Android Share or a structured local
+Intent API with voice, speed and filename. The app owner reviews the request
+and taps Generate before processing. A calling Android app can supply a
+mutable, explicitly targeted PendingIntent callback to receive the finished
+MP3 content URI and job status, including errors and cancellation.
+See the developer guide in android-native/API.md.
+
+For programs running on a different device or online service, use the
+separate authenticated GitHub cloud API in cloud/API.md. The native APK
+does not run a publicly reachable HTTP server or embed access tokens.

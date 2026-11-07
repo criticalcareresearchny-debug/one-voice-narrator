@@ -2,6 +2,7 @@ package com.onevoice.nativeapp
 
 import android.Manifest
 import android.app.Activity
+import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -43,6 +44,9 @@ class MainActivity : Activity() {
     private val mint = Color.rgb(120, 227, 202)
     private val card = Color.rgb(29, 43, 65)
     private var lastUri: Uri? = null
+    private var apiCallback: PendingIntent? = null
+    private var apiRequestId: String? = null
+    private lateinit var apiStatus: TextView
 
     private val poll = object : Runnable {
         override fun run() {
@@ -67,6 +71,8 @@ class MainActivity : Activity() {
         content.addView(text("♫  One Voice", 29f, mint, true))
         content.addView(text("NATIVE NARRATION STUDIO", 12f, mint))
         content.addView(text("Six natural English voices · local MP3 · background processing", 14f, muted))
+        apiStatus = text("API Connect: Ready — share text from other apps or send a structured Android request.", 13f, mint)
+        content.addView(apiStatus, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
         content.addView(text("Your video script", 16f, ink, true).also { spacing(it, 22, 5) })
         script = EditText(this).apply {
@@ -159,6 +165,7 @@ class MainActivity : Activity() {
             12f, muted
         ).also { spacing(it, 20, 0) })
         setContentView(outer)
+        importExternalRequest(intent)
 
         generateButton.setOnClickListener { begin() }
         stopButton.setOnClickListener {
@@ -189,6 +196,66 @@ class MainActivity : Activity() {
         }
     }
 
+    override fun onNewIntent(next: Intent) {
+        super.onNewIntent(next)
+        setIntent(next)
+        importExternalRequest(next)
+    }
+
+    private fun importExternalRequest(incoming: Intent?) {
+        if (incoming == null) return
+        val isShare = incoming.action == Intent.ACTION_SEND && incoming.type == "text/plain"
+        val isApi = incoming.action == ApiContract.ACTION_GENERATE
+        if (!isShare && !isApi) return
+        if (getSharedPreferences("state", MODE_PRIVATE).getString("jobState", "") == "running") {
+            toast("Finish the current recording before sending another script.")
+            return
+        }
+        val incomingText = if (isShare) {
+            incoming.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
+        } else {
+            incoming.getStringExtra(ApiContract.EXTRA_TEXT)
+                ?: incoming.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
+        }?.trim().orEmpty()
+        if (incomingText.isEmpty()) {
+            toast("The other app did not include any narration text.")
+            return
+        }
+        if (incomingText.length > ApiContract.MAX_EXTERNAL_CHARS) {
+            toast("External requests are limited to 50,000 characters. Split the script.")
+            return
+        }
+        script.setText(incomingText)
+        script.setSelection(0)
+        apiCallback = null
+        apiRequestId = null
+        if (isApi) {
+            val voiceCode = incoming.getStringExtra(ApiContract.EXTRA_VOICE)
+            val index = VoiceCatalog.voices.indexOfFirst { it.code == voiceCode }
+            if (index >= 0) narrator.setSelection(index)
+            val requestedSpeed = incoming.getFloatExtra(ApiContract.EXTRA_SPEED, 1.0f)
+            if (requestedSpeed.isFinite() && requestedSpeed >= 0.7f && requestedSpeed <= 1.5f) {
+                speed.progress = ((requestedSpeed - 0.7f) / 0.05f).toInt().coerceIn(0, 16)
+                speedLabel.text = speedText()
+            }
+            incoming.getStringExtra(ApiContract.EXTRA_FILENAME)?.take(70)?.let {
+                if (it.isNotBlank()) name.setText(it)
+            }
+            apiRequestId = incoming.getStringExtra(ApiContract.EXTRA_REQUEST_ID)?.take(100)
+            val suppliedCallback = ApiContract.readCallback(incoming)
+            if (suppliedCallback != null && suppliedCallback.isImmutable) {
+                toast("Callback must be a mutable, explicit PendingIntent.")
+            } else {
+                apiCallback = suppliedCallback
+            }
+            apiStatus.text = "API Connect: Request received. Review and tap Generate to approve." +
+                (if (apiCallback != null) " Finished MP3 will be returned to the calling app." else "")
+        } else {
+            apiStatus.text = "API Connect: Shared text imported. Tap Generate to make an MP3."
+        }
+        toast("Script imported from another app. Tap Generate to approve.")
+    }
+
     private fun begin() {
         val story = script.text.toString().trim()
         if (story.isEmpty()) {toast("Paste a script first."); return}
@@ -208,9 +275,20 @@ class MainActivity : Activity() {
                 putExtra(NarrationService.EXTRA_VOICE, narrator.selectedItemPosition)
                 putExtra(NarrationService.EXTRA_SPEED, speedFactor())
                 putExtra(NarrationService.EXTRA_NAME, filename)
+                apiCallback?.let { putExtra(ApiContract.EXTRA_CALLBACK, it) }
+                apiRequestId?.let { putExtra(ApiContract.EXTRA_REQUEST_ID, it) }
             }
             startForegroundService(intent)
+            apiCallback = null
+            apiRequestId = null
+            apiStatus.text = "API Connect: Recording submitted. You may use other apps."
         } catch (err: Exception) {
+            getSharedPreferences("state", MODE_PRIVATE).edit()
+                .putString("jobState", "error").putString("message", "Could not start narration").apply()
+            ApiContract.sendResult(this, apiCallback, apiRequestId,
+                ApiContract.STATUS_ERROR, message = err.message ?: "Unable to start")
+            apiCallback = null
+            apiRequestId = null
             toast("Could not start background narration: " + (err.message ?: "unknown error"))
         }
         updateStatus()
