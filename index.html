@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111a2c">
+  <meta name="description" content="Free, private, client-side text-to-speech narration with downloadable MP3 audio. No account or per-character fees.">
+  <title>One Voice — Free Narration Studio</title>
+  <style>
+    :root {color-scheme:dark; --bg:#101827; --panel:#182338; --panel2:#1e2c43; --line:#344258; --ink:#eff4fb; --muted:#acbed3; --mint:#78e3ca; --mint-ink:#0d2b27; --gold:#f8c981; --danger:#f4a4a4;}
+    * {box-sizing:border-box}
+    html {min-height:100%}
+    body {margin:0; background:radial-gradient(circle at 90% 0%,#20324b 0,#101827 42%); color:var(--ink); font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; padding:0 16px 40px;}
+    .shell {max-width:780px;margin:0 auto;}
+    header {display:flex;align-items:center;gap:13px;padding:34px 0 14px}
+    .logo {display:grid;place-items:center;flex:none;width:54px;height:54px;border-radius:16px;background:var(--mint);color:var(--mint-ink);font-size:28px;box-shadow:0 8px 24px #0003}
+    .eyebrow {margin:0;color:var(--mint);font-size:11px;letter-spacing:.17em;font-weight:800;text-transform:uppercase}
+    h1 {margin:1px 0 0;font-size:clamp(24px,5vw,33px);line-height:1.17;letter-spacing:-.04em}
+    .sub {margin:6px 0 20px;color:var(--muted);max-width:680px}
+    .card {background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:19px;box-shadow:0 14px 42px #03081125;margin:0 0 15px}
+    .fieldheading {display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:9px}
+    label {font-weight:740}
+    .meta {font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+    textarea {width:100%;min-height:255px;border:1px solid #4b5d76;background:#101a2c;color:var(--ink);border-radius:12px;padding:15px;resize:vertical;font:16px/1.7 Georgia,serif;outline-offset:3px;}
+    textarea::placeholder {color:#8fa3bb;}
+    textarea:focus, input:focus,select:focus,button:focus-visible,a:focus-visible {outline:2px solid var(--mint);outline-offset:3px}
+    .helper {display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}
+    .tiny-button {color:var(--mint);border:0;background:transparent;cursor:pointer;font-size:13px;padding:7px 3px;text-decoration:underline;text-underline-offset:4px;}
+    .voice-row {display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;background:var(--panel2);border:1px solid #42546d;margin-bottom:15px}
+    .avatar {background:#2e4a60;color:#b0f8e6;display:grid;place-items:center;width:39px;height:39px;border-radius:12px;font-size:19px}
+    .voice-chooser {flex:1;min-width:0}
+    .voice-name {display:block;font-weight:750;margin-bottom:6px}
+    #voice {width:100%;background:#101a2c;color:var(--ink);padding:10px;border:1px solid #60728b;border-radius:10px;font:inherit;font-size:15px}
+    .preview-note {font-size:12px;color:var(--muted);margin:7px 0 0}
+    #previewBtn {margin:0 0 14px;width:100%}
+    .voice-desc {font-size:12px;color:var(--muted)}
+    .chip {margin-left:auto;border-radius:100px;color:var(--mint);background:#1e443f;padding:3px 9px;font-size:11px;font-weight:750;white-space:nowrap}
+    .name-row {display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:17px}
+    .name-row label {font-size:13px;color:var(--muted)}
+    .name-row input {min-width:140px;flex:1;background:#101a2c;color:var(--ink);padding:10px 12px;border:1px solid #4b5d76;border-radius:10px;font:inherit;max-width:340px}
+    .suffix {color:var(--muted);margin-left:-6px;font-size:13px}
+    button.primary {width:100%;border:0;background:var(--mint);color:var(--mint-ink);border-radius:13px;font-size:17px;font-weight:800;padding:15px 18px;min-height:55px;cursor:pointer}
+    button.primary:hover:not(:disabled) {background:#a0f5dc}
+    button:disabled {cursor:not-allowed;opacity:.55}
+    button.secondary {border:1px solid #60728b;background:transparent;color:var(--ink);border-radius:11px;padding:10px 14px;cursor:pointer;font-weight:700}
+    button.secondary:hover:not(:disabled) {border-color:var(--mint)}
+    #stopBtn {color:#ffd9ce;border-color:#9a665c}
+    #progressBox {display:none;margin-top:19px;padding:14px;border-radius:12px;background:var(--panel2)}
+    .status-row {display:flex;justify-content:space-between;gap:8px;font-size:13px;align-items:center}
+    #progressLabel {font-weight:750;color:var(--ink)}
+    #percentage {color:var(--mint);font-variant-numeric:tabular-nums}
+    progress {width:100%;height:12px;margin-top:12px;accent-color:var(--mint);display:block}
+    #detail {color:var(--muted);font-size:12px;margin:7px 0 0;overflow-wrap:anywhere}
+    #stopBtn {display:none;margin-top:13px;width:100%}
+    #output {display:none}
+    #output h2 {font-size:18px;letter-spacing:-.02em;margin:0 0 5px}
+    #output p {margin:0 0 13px;color:var(--muted);font-size:13px}
+    audio {width:100%;margin-bottom:13px;display:block}
+    a.download {display:flex;align-items:center;justify-content:center;gap:8px;background:var(--mint);color:var(--mint-ink);font-weight:800;text-decoration:none;border-radius:12px;min-height:48px;padding:12px}
+    #message {display:none;margin-top:14px;border-radius:11px;background:#312632;border:1px solid #8b5365;color:#ffdae1;padding:12px 14px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}
+    .footnote {padding:5px 4px 0;font-size:12px;color:var(--muted)}
+    .footnote strong {color:#d8e5ef}
+    details {margin-top:14px;color:var(--muted)}
+    summary {cursor:pointer;font-size:13px;font-weight:700;color:#d8e5ef}
+    details p {font-size:13px;margin:8px 0 0}
+    @media (max-width:480px){header{padding-top:24px}.card{padding:14px;border-radius:14px} textarea{min-height:250px} .voice-row{gap:9px}.chip{font-size:10px}}
+    @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="logo" aria-hidden="true">♫</div>
+      <div><p class="eyebrow">A little studio, just for narration</p><h1>One Voice</h1></div>
+    </header>
+    <p class="sub">Paste your video script. Create natural-sounding narration. Download one MP3. No account, no credits, and no per-character quota.</p>
+
+    <section class="card" aria-label="Narration editor">
+      <div class="fieldheading"><label for="script">Your narration script</label><span id="count" class="meta">0 characters · 0 words</span></div>
+      <textarea id="script" placeholder="Paste your entire story or video script here. Long scripts are divided into small sections automatically." spellcheck="true" autocapitalize="sentences"></textarea>
+      <div class="helper"><span class="meta" id="estimate">Estimated narration: —</span><button type="button" id="sampleBtn" class="tiny-button">Insert a short example</button></div>
+    </section>
+
+    <section class="card" aria-label="Create recording">
+      <div class="voice-row">
+        <div class="avatar" aria-hidden="true">♬</div>
+        <div class="voice-chooser">
+          <label class="voice-name" for="voice">Choose your English narrator</label>
+          <select id="voice" aria-describedby="voiceDesc">
+            <optgroup label="American English">
+              <option value="af_heart">Heart — female (default)</option>
+              <option value="af_bella">Bella — female</option>
+              <option value="am_michael">Michael — male</option>
+              <option value="am_fenrir">Fenrir — male</option>
+            </optgroup>
+            <optgroup label="British English">
+              <option value="bf_emma">Emma — female</option>
+              <option value="bm_george">George — male</option>
+            </optgroup>
+          </select>
+          <div class="voice-desc" id="voiceDesc">American English · Female · Kokoro AI</div>
+        </div>
+        <span class="chip">6 VOICES</span>
+      </div>
+      <button type="button" id="previewBtn" class="secondary">♫ &nbsp; Create a short voice sample</button>
+      <div class="name-row"><label for="filename">Recording name</label><input id="filename" value="my-narration" maxlength="120" autocomplete="off" aria-label="Recording filename"><span class="suffix">.mp3</span></div>
+      <button type="button" id="generateBtn" class="primary">♫ &nbsp; Generate narration</button>
+      <div id="progressBox" aria-live="polite" aria-atomic="false">
+        <div class="status-row"><span id="progressLabel">Getting ready…</span><span id="percentage">0%</span></div>
+        <progress id="progress" value="0" max="100" aria-label="Generation progress"></progress>
+        <p id="detail">Preparing the voice engine.</p>
+        <button type="button" class="secondary" id="stopBtn">Stop and save what's finished</button>
+      </div>
+      <p id="message" role="alert"></p>
+    </section>
+
+    <section class="card" id="output" aria-label="Completed recording" aria-live="polite">
+      <h2 id="outputTitle">Your narration is ready</h2>
+      <p id="outputInfo">Listen below, then save the MP3 on your phone.</p>
+      <audio controls preload="metadata" id="player">Your browser does not support audio playback.</audio>
+      <a id="download" class="download" href="#" download="my-narration.mp3">↓ &nbsp; Download MP3</a>
+    </section>
+
+    <div class="footnote">
+      <strong>How it stays free:</strong> The voices are calculated on your device, not a paid narration server. The first use downloads the voice model (roughly 100 MB or more including supporting files). Keep Chrome open while generating. On slower Android phones, a long chapter may take a substantial amount of time, and the browser may run out of memory. No fixed character or usage limit is imposed by this app.
+      <details><summary>Privacy and troubleshooting</summary><p>Your script is processed by the browser's speech engine, not submitted to a narration API. External code and model files are downloaded from third-party content networks. Your script is also saved in this browser's local storage so it survives a refresh; use “Clear script” if you do not want it saved. If model loading fails, check your connection and try Chrome on a laptop or desktop. Do not switch tabs or lock the screen during long recordings. The site must be opened through an HTTPS website, such as GitHub Pages, not directly as a file from your Downloads folder.</p></details>
+    </div>
+    <div class="helper"><button type="button" id="clearBtn" class="tiny-button">Clear script from this browser</button><span class="meta">6 English voices · Kokoro 82M · MP3 96 kbps mono</span></div>
+  </main>
+
+  <script>
+    "use strict";
+    const $ = (id) => document.getElementById(id);
+    const elements = {script:$("script"), count:$("count"), estimate:$("estimate"), voice:$("voice"), voiceDesc:$("voiceDesc"), preview:$("previewBtn"), filename:$("filename"), generate:$("generateBtn"), stop:$("stopBtn"), progressBox:$("progressBox"), progress:$("progress"), progressLabel:$("progressLabel"), percentage:$("percentage"), detail:$("detail"), message:$("message"), output:$("output"), outputTitle:$("outputTitle"), outputInfo:$("outputInfo"), player:$("player"), download:$("download")};
+    const MODEL_SAMPLE_RATE = 24000;
+    const MP3_KBPS = 96;
+    const MAX_SECTION_CHARS = 245;
+    let worker = null;
+    let modelReady = false;
+    let initPromise = null;
+    let activeRequest = null;
+    let currentUrl = null;
+    let running = false;
+    let stopRequested = false;
+    let saveTimer = null;
+
+    const VOICES = {
+      af_heart:{label:"Heart",detail:"American English · Female · natural storyteller"},
+      af_bella:{label:"Bella",detail:"American English · Female · expressive"},
+      am_michael:{label:"Michael",detail:"American English · Male · measured"},
+      am_fenrir:{label:"Fenrir",detail:"American English · Male · characterful"},
+      bf_emma:{label:"Emma",detail:"British English · Female · understated"},
+      bm_george:{label:"George",detail:"British English · Male · steady"}
+    };
+    try {
+      elements.script.value = localStorage.getItem("onevoice-script") || "";
+      const savedVoice = localStorage.getItem("onevoice-voice");
+      if (savedVoice && VOICES[savedVoice]) elements.voice.value = savedVoice;
+    } catch (_) {}
+    function updateVoiceDescription() { elements.voiceDesc.textContent = VOICES[elements.voice.value]?.detail || "English narrator"; }
+    elements.voice.addEventListener("change",()=>{
+      updateVoiceDescription();
+      try { localStorage.setItem("onevoice-voice",elements.voice.value); } catch (_) {}
+    });
+    updateVoiceDescription();
+    updateCounts();
+
+    function updateCounts() {
+      const text = elements.script.value;
+      const wordCount = (text.match(/\S+/g) || []).length;
+      elements.count.textContent = `${text.length.toLocaleString()} characters · ${wordCount.toLocaleString()} words`;
+      const minutes = wordCount / 145;
+      elements.estimate.textContent = wordCount ? `Estimated narration: about ${minutes < 1 ? Math.max(1, Math.round(minutes * 60)) + " sec" : (Math.round(minutes * 10) / 10) + " min"}` : "Estimated narration: —";
+    }
+    elements.script.addEventListener("input", () => {
+      updateCounts();
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => { try { localStorage.setItem("onevoice-script", elements.script.value); } catch (_) {} }, 450);
+    });
+    $("sampleBtn").addEventListener("click", () => {
+      if (elements.script.value.trim() && !window.confirm("Replace your current script with a short example?")) return;
+      elements.script.value = "Beyond the last ridge, the forest opened beneath a pale and unfamiliar sky. For a moment, the travellers stood in silence. Then a distant bell rang out across the valley, and the journey began again.";
+      elements.script.dispatchEvent(new Event("input"));
+      elements.script.focus();
+    });
+    $("clearBtn").addEventListener("click", () => {
+      if (elements.script.value && !window.confirm("Clear this script from the page and browser storage?")) return;
+      elements.script.value = "";
+      clearTimeout(saveTimer);
+      try { localStorage.removeItem("onevoice-script"); } catch (_) {}
+      updateCounts();
+      hideError();
+    });
+
+    function errorMessage(err) { return String(err?.message || err || "Unknown error"); }
+    function showError(message) { elements.message.textContent = message; elements.message.style.display = "block"; }
+    function hideError() { elements.message.textContent = ""; elements.message.style.display = "none"; }
+    function setProgress(title, detail, pct) {
+      elements.progressBox.style.display = "block";
+      elements.progressLabel.textContent = title;
+      elements.detail.textContent = detail;
+      if (pct == null) { elements.progress.removeAttribute("value"); elements.percentage.textContent = "…"; }
+      else { const n = Math.max(0, Math.min(100, Math.round(pct))); elements.progress.value = n; elements.percentage.textContent = `${n}%`; }
+    }
+    function setBusy(value) {
+      running = value;
+      elements.generate.disabled = value;
+      elements.preview.disabled = value;
+      elements.voice.disabled = value;
+      elements.stop.style.display = value ? "block" : "none";
+      elements.script.readOnly = value;
+      elements.filename.disabled = value;
+    }
+    async function ensureMp3Encoder() {
+      if (window.lamejs && typeof window.lamejs.Mp3Encoder === "function") return;
+      setProgress("Preparing MP3 encoder", "Downloading the free audio encoder…", null);
+      await new Promise((resolve,reject) => {
+        const tag = document.createElement("script");
+        tag.src = "https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js";
+        tag.onload = resolve;
+        tag.onerror = () => reject(new Error("Could not load the MP3 encoder. Check internet access and retry."));
+        document.head.appendChild(tag);
+      });
+      if (!window.lamejs?.Mp3Encoder) throw new Error("The MP3 encoder loaded incorrectly. Please reload and try again.");
+    }
+    function makeWorker() {
+      if (worker) return worker;
+      worker = new Worker("./voice-worker.js", {type:"module"});
+      worker.onmessage = ({data}) => {
+        if (data.type === "loading") {
+          if (running) setProgress("Loading the narrator", "Downloading and preparing the voice model (first use takes longer).", null);
+        }
+        if (data.type === "download-progress") {
+          if (running && data.progress != null) {
+            setProgress("Loading the narrator", `Voice model: ${Math.round(data.progress)}% downloaded. This is a one-time model download when cached.`, null);
+          }
+        }
+        if (data.type === "ready") {
+          modelReady = true;
+          if (activeRequest?.kind === "load") { const req=activeRequest; activeRequest=null; req.resolve(); }
+        }
+        if (data.type === "audio") {
+          if (activeRequest?.kind === "speak" && activeRequest.id === data.id) {
+            const req=activeRequest; activeRequest=null; req.resolve(data);
+          }
+        }
+        if (data.type === "error") {
+          if (activeRequest) { const req=activeRequest; activeRequest=null; req.reject(new Error(data.message)); }
+        }
+      };
+      worker.onerror = (event) => {
+        const message = event?.message || "Unable to start voice processing. The speech library might be blocked or unavailable.";
+        if (activeRequest) { const req=activeRequest; activeRequest=null; req.reject(new Error(message)); }
+        discardWorker();
+      };
+      return worker;
+    }
+    function discardWorker() { try { worker?.terminate(); } catch (_) {} worker=null;modelReady=false;initPromise=null; }
+    async function ensureModel() {
+      if (modelReady) return;
+      if (initPromise) return initPromise;
+      makeWorker();
+      initPromise = new Promise((resolve,reject)=>{
+        activeRequest = {kind:"load",resolve,reject};
+        worker.postMessage({type:"load"});
+      });
+      try { await initPromise; }
+      catch (err) { discardWorker(); throw err; }
+      finally { initPromise=null; }
+    }
+    function speak(text, id, voice) {
+      if (!worker || !modelReady) return Promise.reject(new Error("Voice engine is not ready."));
+      return new Promise((resolve,reject) => {
+        activeRequest={kind:"speak",id,resolve,reject};
+        worker.postMessage({type:"speak",text,id,voice});
+      });
+    }
+
+    function splitScript(input, maximum=MAX_SECTION_CHARS) {
+      const paragraphs = input.replace(/\r\n?/g,"\n").split(/\n+/).map(s=>s.replace(/\s+/g," ").trim()).filter(Boolean);
+      const result=[];
+      const segmenter = typeof Intl.Segmenter === "function" ? new Intl.Segmenter("en",{granularity:"sentence"}) : null;
+      for (const para of paragraphs) {
+        const sentences = segmenter ? Array.from(segmenter.segment(para),s=>s.segment.trim()).filter(Boolean) : para.split(/(?<=[.!?])\s+/u);
+        let current="";
+        function pushCurrent() { if(current.trim()) result.push({text:current.trim(),pause:145});current=""; }
+        for (const sentence of sentences) {
+          if (sentence.length <= maximum) {
+            if (current.length && current.length + sentence.length + 1 > maximum) pushCurrent();
+            current+=(current?" ":"")+sentence;
+            continue;
+          }
+          pushCurrent();
+          // Very long sentences are divided at word boundaries, not discarded.
+          const words = sentence.match(/\S+/gu) || [];
+          let part="";
+          for (let token of words) {
+            while (token.length > maximum) {
+              if(part) {result.push({text:part,pause:145});part="";}
+              result.push({text:token.slice(0,maximum),pause:145});
+              token=token.slice(maximum);
+            }
+            if (part && part.length + token.length + 1 > maximum) {result.push({text:part,pause:145});part="";}
+            part+=(part?" ":"")+token;
+          }
+          if (part) result.push({text:part,pause:145});
+        }
+        pushCurrent();
+        if (result.length) result[result.length - 1].pause=430;
+      }
+      if (result.length) result[result.length-1].pause=0;
+      return result;
+    }
+    function safeName(name) { return (name || "my-narration").replace(/[^\p{L}\p{N}._-]+/gu,"-").replace(/^[-.]+|[-.]+$/g,"").slice(0,100) || "my-narration"; }
+    function appendPcm(encoder, parts, samples) {
+      const blockSize=1152;
+      for (let pos=0;pos<samples.length;pos+=blockSize) {
+        const end=Math.min(pos+blockSize,samples.length);
+        const pcm=new Int16Array(end-pos);
+        for(let i=pos;i<end;i++){
+          const value = Math.max(-1,Math.min(1,samples[i]));
+          pcm[i-pos] = value < 0 ? Math.round(value*32768) : Math.round(value*32767);
+        }
+        const mp3=encoder.encodeBuffer(pcm);
+        if(mp3 && mp3.length) parts.push(new Uint8Array(mp3));
+      }
+    }
+    function appendSilence(encoder, parts, milliseconds, sampleRate=MODEL_SAMPLE_RATE) {
+      if (!milliseconds) return;
+      const count=Math.round(sampleRate*milliseconds/1000);
+      appendPcm(encoder,parts,new Float32Array(count));
+    }
+    function finishMp3(encoder, parts) {
+      const tail=encoder.flush();
+      if(tail?.length) parts.push(new Uint8Array(tail));
+      return new Blob(parts,{type:"audio/mpeg"});
+    }
+    function presentMp3(blob, partial, completed,total, preview=false, voice="af_heart") {
+      if (currentUrl) URL.revokeObjectURL(currentUrl);
+      currentUrl=URL.createObjectURL(blob);
+      elements.player.pause();
+      elements.player.src=currentUrl;
+      const name=preview?`voice-sample-${voice}`:safeName(elements.filename.value);
+      elements.download.href=currentUrl;
+      elements.download.download=`${name}${partial?"-partial":""}.mp3`;
+      elements.download.textContent=preview?"↓  Download voice sample MP3":"↓  Download MP3";
+      elements.outputTitle.textContent=preview?`${VOICES[voice]?.label || "Voice"} — sample ready`:(partial?"Partial narration saved":"Your narration is ready");
+      elements.outputInfo.textContent=preview?"Press Play to hear the selected voice. Try another voice, or generate your full narration below.":(partial?`Finished ${completed} of ${total} sections. You can play and save what was completed.`:`Finished ${completed} sections. Play your narration or download the MP3 for your video.`);
+      elements.output.style.display="block";
+      elements.output.scrollIntoView({behavior:"smooth",block:"nearest"});
+    }
+    elements.stop.addEventListener("click",()=>{
+      stopRequested=true;
+      elements.stop.disabled=true;
+      setProgress("Stopping after this section", "Saving what has already been generated; the current sentence may need to finish first.", null);
+    });
+
+    async function generate(preview=false) {
+      if (running) return;
+      const voice = elements.voice.value;
+      if (!VOICES[voice]) {showError("Please choose a supported English voice.");return;}
+      const script = preview ? "Beyond the quiet hills, the stars appeared one by one, and a new adventure began." : elements.script.value.trim();
+      if (!script) {showError("First, paste or type your narration script into the text box.");elements.script.focus();return;}
+      const sections=splitScript(script);
+      if (!sections.length) {showError("Please enter some words for the narrator to read.");return;}
+      stopRequested=false;
+      elements.stop.disabled=false;
+      hideError();
+      setBusy(true);
+      elements.output.style.display="none";
+      setProgress(preview?"Preparing voice sample":"Starting narration",preview?`Preparing a sample with ${VOICES[voice].label}…`:`The script has ${sections.length.toLocaleString()} sections. Loading audio tools…`,null);
+      let encoder=null;
+      const parts=[];
+      let completed=0;
+      try {
+        await ensureMp3Encoder();
+        if (stopRequested) {setProgress("Stopped", "Nothing has been recorded yet.",0);return;}
+        setProgress("Loading the narrator", "First download may be 100 MB or more. Please keep this page open.",null);
+        await ensureModel();
+        if (stopRequested) {setProgress("Stopped", "Nothing has been recorded yet.",0);return;}
+        encoder=new window.lamejs.Mp3Encoder(1,MODEL_SAMPLE_RATE,MP3_KBPS);
+        for (let i=0;i<sections.length;i++) {
+          if (stopRequested) break;
+          setProgress("Generating your narration",`Reading section ${(i+1).toLocaleString()} of ${sections.length.toLocaleString()}. Keep this tab visible.`,i/sections.length*100);
+          const result=await speak(sections[i].text,i,voice);
+          if (result.sampleRate!==MODEL_SAMPLE_RATE) throw new Error(`Unexpected sample rate: ${result.sampleRate}. Expected ${MODEL_SAMPLE_RATE} Hz.`);
+          appendPcm(encoder,parts,new Float32Array(result.samples));
+          appendSilence(encoder,parts,sections[i].pause);
+          completed++;
+          // Yield to let the UI update between sections.
+          await new Promise(resolve=>setTimeout(resolve,0));
+        }
+        if (completed===0) {setProgress("Stopped", "No audio was generated.",0);return;}
+        setProgress("Saving MP3", "Finishing the MP3 file…",completed/sections.length*100);
+        const blob=finishMp3(encoder,parts);
+        if (!blob.size) throw new Error("The MP3 encoder produced an empty file.");
+        const partial=completed<sections.length;
+        presentMp3(blob,partial,completed,sections.length,preview,voice);
+        setProgress(preview?"Voice sample ready":(partial?"Stopped — partial MP3 ready":"Narration complete"),preview?"Press Play below to hear the voice.":partial?"Download your partial recording below.":"Your MP3 is ready to play or download.",completed/sections.length*100);
+      } catch(err) {
+        const detail=errorMessage(err);
+        if (encoder && completed>0) {
+          try {const blob=finishMp3(encoder,parts);if(blob.size) presentMp3(blob,true,completed,sections.length,preview,voice);} catch(_) {}
+        }
+        showError(`Narration couldn't continue: ${detail}\n\nIf you're using a phone, try a shorter test first, keep Chrome open, or use a computer for longer scripts.`);
+        setProgress("There was a problem", completed?`You can still download the first ${completed} completed sections below.`:"No MP3 was created.",completed/sections.length*100);
+      } finally {
+        setBusy(false);
+        elements.stop.disabled=false;
+      }
+    }
+    elements.generate.addEventListener("click",()=>generate(false));
+    elements.preview.addEventListener("click",()=>generate(true));
+  </script>
+</body>
+</html>
