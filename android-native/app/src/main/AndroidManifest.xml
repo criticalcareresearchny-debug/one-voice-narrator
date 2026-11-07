@@ -6,6 +6,7 @@
     <application
         android:allowBackup="false"
         android:label="One Voice Native"
+        android:icon="@drawable/ic_onevoice"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:usesCleartextTraffic="false"
         android:largeHeap="true">
