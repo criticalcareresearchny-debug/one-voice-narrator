@@ -14,6 +14,7 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 from kokoro_onnx import Kokoro
+from imageio_ffmpeg import get_ffmpeg_exe
 
 VOICES = {
     "af_heart": "en-us", "af_bella": "en-us",
@@ -125,7 +126,7 @@ def run():
             print(f"Completed {index}/{len(chunks)} sections.", flush=True)
 
     subprocess.run(
-        ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+        [get_ffmpeg_exe(), "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
          "-i", str(temp), "-codec:a", "libmp3lame", "-b:a", "96k", str(out)],
         check=True,
         timeout=240,
