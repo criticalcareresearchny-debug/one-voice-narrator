@@ -1,0 +1,38 @@
+name: Build browser speech library
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/kokoro-entry.js'
+      - '.github/workflows/build-browser-tts.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser build dependencies
+        run: npm install --no-save --no-package-lock --no-fund --no-audit kokoro-js@1.2.1 esbuild@0.25.12
+      - name: Bundle Kokoro for a browser (not Node.js)
+        run: |
+          mkdir -p vendor
+          npx esbuild src/kokoro-entry.js --bundle --platform=browser --format=esm --target=es2022 --minify --outfile=vendor/kokoro-browser.js
+          test -s vendor/kokoro-browser.js
+          test $(wc -c < vendor/kokoro-browser.js) -lt 20000000
+      - name: Commit generated browser bundle
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f vendor/kokoro-browser.js
+          if ! git diff --cached --quiet; then
+            git commit -m "Build browser-compatible Kokoro speech engine [skip ci]"
+            git push
+          fi
