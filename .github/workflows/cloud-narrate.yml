@@ -1,0 +1,87 @@
+# Optional remote TTS job. The current public repo is NOT private storage.
+# For private narration use a PRIVATE processing repository instead.
+name: One Voice - background MP3
+run-name: One Voice cloud - ${{ github.event_name == 'workflow_dispatch' && inputs.request_id || 'test' }}
+on:
+  workflow_dispatch:
+    inputs:
+      text:
+        description: 'Public repository warning: Do not enter confidential or unpublished text.'
+        required: true
+        type: string
+      voice:
+        description: English narration voice
+        required: true
+        type: choice
+        default: af_heart
+        options:
+          - af_heart
+          - af_bella
+          - am_michael
+          - am_fenrir
+          - bf_emma
+          - bm_george
+      speed:
+        description: 'Narration speed (0.70 to 1.50)'
+        required: true
+        type: string
+        default: '1.00'
+      filename:
+        description: MP3 filename (no extension)
+        required: true
+        type: string
+        default: my-narration
+      request_id:
+        description: 'Request identifier for integrations (letters and numbers only)'
+        required: false
+        type: string
+        default: manual
+  # One-time safe demonstration; remove this trigger after verifying the runner.
+  push:
+    paths:
+      - '.github/workflows/cloud-narrate.yml'
+permissions:
+  contents: read
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      ONEVOICE_TEXT: ${{ github.event_name == 'workflow_dispatch' && inputs.text || 'Welcome to One Voice. This is a short cloud narration demonstration, prepared entirely outside your phone.' }}
+      ONEVOICE_VOICE: ${{ inputs.voice || 'af_heart' }}
+      ONEVOICE_SPEED: ${{ inputs.speed || '1.00' }}
+      ONEVOICE_FILENAME: ${{ inputs.filename || 'onevoice-cloud-demo' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install speech and MP3 tools
+        run: |
+          python -m pip install --disable-pip-version-check --no-cache-dir 'kokoro-onnx==0.6.0' 'soundfile>=0.12,<0.14'
+          command -v ffmpeg
+      - uses: actions/cache@v4
+        with:
+          path: models
+          key: onevoice-model-v1-int8-20261107
+      - name: Download open-source model and voices (cached)
+        run: |
+          mkdir -p models
+          if [ ! -s models/kokoro-v1.0.int8.onnx ]; then
+            curl --fail --location --retry 3 --silent --show-error --output models/kokoro-v1.0.int8.onnx 'https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/kokoro-v1.0.int8.onnx'
+          fi
+          if [ ! -s models/voices-v1.0.bin ]; then
+            curl --fail --location --retry 3 --silent --show-error --output models/voices-v1.0.bin 'https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/voices-v1.0.bin'
+          fi
+          test $(wc -c < models/kokoro-v1.0.int8.onnx) -gt 10000000
+          test $(wc -c < models/voices-v1.0.bin) -gt 100000
+      - name: Create narration MP3 on GitHub's runner
+        run: python cloud/generate.py
+      - name: Save MP3 as downloadable workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: onevoice-mp3-${{ github.run_id }}
+          path: cloud-output/*.mp3
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
