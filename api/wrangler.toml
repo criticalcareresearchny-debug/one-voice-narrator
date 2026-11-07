@@ -1,0 +1,11 @@
+name = "onevoice-narration-api"
+main = "src/worker.mjs"
+compatibility_date = "2026-11-06"
+workers_dev = true
+keep_vars = true
+
+[vars]
+# Do not set any credentials or narration text in this file.
+# Set these to the PRIVATE GitHub processing repository you create.
+GITHUB_OWNER = "criticalcareresearchny-debug"
+GITHUB_REPO = "onevoice-private-narration"
