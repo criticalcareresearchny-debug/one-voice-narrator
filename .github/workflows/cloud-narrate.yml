@@ -46,11 +46,6 @@ jobs:
   render:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    env:
-      ONEVOICE_TEXT: ${{ github.event_name == 'workflow_dispatch' && inputs.text || 'Welcome to One Voice. This is a short cloud narration demonstration, prepared entirely outside your phone.' }}
-      ONEVOICE_VOICE: ${{ inputs.voice || 'af_heart' }}
-      ONEVOICE_SPEED: ${{ inputs.speed || '1.00' }}
-      ONEVOICE_FILENAME: ${{ inputs.filename || 'onevoice-cloud-demo' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
