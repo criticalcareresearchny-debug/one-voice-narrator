@@ -15,7 +15,8 @@ async function load() {
   self.postMessage({type:"loading"});
   modelPromise = (async()=>{
     // Model and library are downloaded on demand and inference runs on the user's device.
-    const { KokoroTTS } = await import("https://esm.sh/kokoro-js@1.2.1");
+    // Browser-specific local bundle built on GitHub Actions, avoids Node-style fs polyfills.
+    const { KokoroTTS } = await import("./vendor/kokoro-browser.js");
     tts = await KokoroTTS.from_pretrained(MODEL, {
       dtype:"q8",
       device:"wasm",
@@ -30,11 +31,13 @@ async function load() {
   try {await modelPromise;}
   catch (err) {modelPromise=null;reportError(err);}
 }
-async function synthesize(text,id,voice){
+async function synthesize(text,id,voice,speed){
   if (!tts) {reportError(new Error("Speech model not loaded"));return;}
   try {
     if (!ENGLISH_VOICES.has(voice)) throw new Error("Unsupported narration voice");
-    const audio = await tts.generate(text,{voice});
+    const playbackSpeed = Number(speed);
+    if (!Number.isFinite(playbackSpeed) || playbackSpeed < 0.7 || playbackSpeed > 1.5) throw new Error("Invalid narration speed");
+    const audio = await tts.generate(text,{voice,speed:playbackSpeed});
     const data=audio.audio;
     if (!(data instanceof Float32Array)) throw new Error("Voice engine returned an unsupported audio format.");
     const rate=audio.sampling_rate || 24000;
@@ -43,5 +46,5 @@ async function synthesize(text,id,voice){
 }
 self.addEventListener("message",({data})=>{
   if (data?.type==="load") void load();
-  if (data?.type==="speak") void synthesize(data.text,data.id,data.voice);
+  if (data?.type==="speak") void synthesize(data.text,data.id,data.voice,data.speed ?? 1);
 });
