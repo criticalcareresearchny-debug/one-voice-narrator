@@ -2,6 +2,9 @@ package com.onevoice.nativeapp
 
 import android.Manifest
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -204,6 +207,44 @@ class MainActivity : Activity() {
             content.addView(it)
         }
 
+        content.addView(text("API CONNECT — CLOUD NARRATION", 18f, mint, true).also { spacing(it, 25, 6) })
+        content.addView(text(
+            "Create a token for other trusted video-making programs. GitHub issues the token, " +
+            "not this app. Narration submitted through your public GitHub repo is not private.",
+            13f, muted
+        ))
+        val generateApiToken = button("Generate API Token on GitHub", true)
+        spacing(generateApiToken, 12, 0)
+        content.addView(generateApiToken)
+        val copyApiEndpoint = button("Copy API Address", false)
+        spacing(copyApiEndpoint, 8, 0)
+        content.addView(copyApiEndpoint)
+        val manageApiTokens = button("Manage / Revoke Tokens", false)
+        spacing(manageApiTokens, 8, 0)
+        content.addView(manageApiTokens)
+        content.addView(text(
+            "In GitHub choose Only select repositories → one-voice-narrator. " +
+            "The Actions permission should be Read and write. Never put a token in public code.",
+            12f, muted
+        ))
+        generateApiToken.setOnClickListener {
+            openApiPage(
+                "https://github.com/settings/personal-access-tokens/new" +
+                "?name=OneVoice-Narration&description=Voice+narration+workflow" +
+                "&target_name=criticalcareresearchny-debug&expires_in=90&actions=write"
+            )
+        }
+        copyApiEndpoint.setOnClickListener {
+            val endpoint = "https://api.github.com/repos/criticalcareresearchny-debug/" +
+                "one-voice-narrator/actions/workflows/cloud-narrate.yml/dispatches"
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText("One Voice API", endpoint))
+            toast("API address copied")
+        }
+        manageApiTokens.setOnClickListener {
+            openApiPage("https://github.com/settings/personal-access-tokens")
+        }
+
         content.addView(text(
             "While the notification says 'Generating', you may use other apps. " +
             "Android may still interrupt processing under low-memory or battery restrictions. " +
@@ -355,6 +396,14 @@ class MainActivity : Activity() {
         lastUri = result?.let { Uri.parse(it) }
         openButton.isEnabled = lastUri != null
         shareButton.isEnabled = lastUri != null
+    }
+
+    private fun openApiPage(address: String) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(address)))
+        } catch (_: Exception) {
+            toast("Cannot open GitHub. Try opening github.com in Chrome.")
+        }
     }
 
     private fun speedFactor(): Float = 0.70f + speed.progress * 0.05f

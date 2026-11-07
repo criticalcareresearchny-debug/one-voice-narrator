@@ -82,3 +82,19 @@ See the developer guide in android-native/API.md.
 For programs running on a different device or online service, use the
 separate authenticated GitHub cloud API in cloud/API.md. The native APK
 does not run a publicly reachable HTTP server or embed access tokens.
+
+## API token controls (0.1.2 beta)
+
+The app now has an **API CONNECT — CLOUD NARRATION** area with three controls:
+**Generate API Token on GitHub**, **Copy API Address**, and **Manage / Revoke Tokens**.
+The first opens GitHub's pre-filled fine-grained token form, with the repository
+owner, 90-day expiration and Actions: write permission selected; the user still
+must choose **Only select repositories → one-voice-narrator**, confirm the
+permissions, and generate the token on GitHub. The token should only be entered
+into another trusted program's secure secret settings.
+
+The app does NOT invent an unregistered token, handle the GitHub token bytes,
+or host an unauthenticated API itself. For a one-click One Voice-issued
+token, a separate authenticated gateway with a secure token registry would
+be required. The existing public GitHub workflow means scripts/artifacts
+may be publicly accessible.
