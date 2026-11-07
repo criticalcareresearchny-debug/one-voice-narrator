@@ -56,7 +56,7 @@ class MainActivity : Activity() {
         window.statusBarColor = backdrop
         window.navigationBarColor = backdrop
 
-        val outer = ScrollView(this).apply { setBackgroundColor(backdrop); fillViewport = true }
+        val outer = ScrollView(this).apply { setBackgroundColor(backdrop); isFillViewport = true }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             val inset = dp(18)
