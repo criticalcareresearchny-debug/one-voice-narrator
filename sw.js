@@ -1,6 +1,6 @@
 // One Voice Narration Studio — lightweight app shell cache. AI models remain managed by the browser and their hosts.
-const VERSION="onevoice-shell-v1";
-const SHELL=["./","./index.html","./manifest.webmanifest","./icon.svg","./icons/icon-192.png","./icons/icon-512.png","./voice-worker.js"];
+const VERSION="onevoice-shell-v2";
+const SHELL=["./","./index.html","./manifest.webmanifest","./icon.svg","./icons/icon-192.png","./icons/icon-512.png","./voice-worker.js","./vendor/kokoro-browser.js"];
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(VERSION).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));
 });
