@@ -64,3 +64,12 @@ Use the **Choose your English narrator** dropdown on the website. The choice is 
 ## Source notes
 
 This app was newly authored for a simple English-narration workflow. It uses upstream AI speech engine/model components and an MP3 encoder. It contains no trackers, analytics, API keys, backend, or paid endpoints.
+## Install on Android as an app
+
+1. Open the published GitHub Pages site in Chrome on your Android phone.
+2. Refresh once so Chrome can read the latest app manifest and service worker.
+3. Tap Chrome's three-dot menu, then **Add to Home screen → Install app**. If available, you can also tap **Install One Voice on this phone** inside the website.
+4. Confirm **Install**. An app-style **One Voice** icon appears on your home screen or app drawer.
+5. If you previously added a website shortcut, remove that old shortcut before installing the full app.
+
+The site includes a web app manifest, 192×192 and 512×512 app icons, and a small service worker to make installation possible. The app shell can be cached, but the voice engine may need to download model files and will not necessarily work fully offline. Long MP3 creation still depends on the device's speed, available memory, and free storage.
