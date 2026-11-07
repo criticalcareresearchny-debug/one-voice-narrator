@@ -1,0 +1,168 @@
+openapi: 3.1.0
+info:
+  title: One Voice Narration API
+  version: 1.0.0-beta
+  summary: Token-authenticated narration requests and MP3 retrieval
+  description: |
+    Source prepared and tested. The service URL is not live until
+    the owner deploys the Cloudflare Worker with a PRIVATE GitHub processor.
+servers:
+  - url: https://YOUR-WORKER.workers.dev
+    description: Replace with your actual Cloudflare Worker URL after deployment
+security:
+  - bearerToken: []
+paths:
+  /health:
+    get:
+      security: []
+      operationId: health
+      responses:
+        '200':
+          description: Worker gateway is reachable
+  /v1/voices:
+    get:
+      operationId: listVoices
+      summary: List six built-in English Kokoro narrators
+      responses:
+        '200':
+          description: Narrator identifiers
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [voices]
+                properties:
+                  voices:
+                    type: array
+                    items:
+                      type: string
+  /v1/narrations:
+    post:
+      operationId: createNarration
+      summary: Create an asynchronous MP3 narration job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  minLength: 1
+                  maxLength: 45000
+                voice:
+                  type: string
+                  enum: [af_heart, af_bella, am_michael, am_fenrir, bf_emma, bm_george]
+                  default: af_heart
+                speed:
+                  type: number
+                  minimum: 0.7
+                  maximum: 1.5
+                  default: 1.0
+                filename:
+                  type: string
+                  default: onevoice-narration
+                request_id:
+                  type: string
+                  description: Optional client-provided correlation ID
+      responses:
+        '202':
+          description: Job accepted, poll its status URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedJob'
+        '400':
+          description: Invalid request
+        '401':
+          description: Invalid or missing Bearer token
+        '503':
+          description: Missing configuration or processor is not private
+  /v1/narrations/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, pattern: '^[1-9][0-9]+$'}
+    get:
+      operationId: getNarration
+      summary: Check progress of an asynchronous narration job
+      responses:
+        '200':
+          description: Job status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {type: string}
+                  status:
+                    type: string
+                    enum: [processing, completed, cancelled, failed]
+                  detail: {type: string}
+                  download_url:
+                    type: [string, 'null']
+                  artifact_url:
+                    type: [string, 'null']
+        '404':
+          description: Job not found or not a One Voice narration job
+  /v1/narrations/{id}/download:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string}
+    get:
+      operationId: downloadNarrationMp3
+      summary: Download finished narration MP3
+      description: |
+        Returns the MP3 from the uncompressed GitHub Actions ZIP archive.
+        If this fails, request the artifact ZIP route instead.
+      responses:
+        '200':
+          description: MPEG-1/2 Layer III audio
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+        '409':
+          description: Job is not finished
+        '422':
+          description: Archive is not directly extractable; use artifact.zip
+  /v1/narrations/{id}/artifact.zip:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string}
+    get:
+      operationId: downloadNarrationArtifact
+      summary: Download the GitHub narration artifact ZIP containing the MP3
+      responses:
+        '200':
+          description: ZIP archive containing one MP3 recording
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+components:
+  securitySchemes:
+    bearerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+  schemas:
+    CreatedJob:
+      type: object
+      required: [id, status, status_url, download_url, artifact_url]
+      properties:
+        id: {type: string}
+        status: {type: string, enum: [queued]}
+        status_url: {type: string}
+        download_url: {type: string}
+        artifact_url: {type: string}
