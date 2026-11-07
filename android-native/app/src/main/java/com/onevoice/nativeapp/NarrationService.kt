@@ -111,15 +111,16 @@ class NarrationService : Service() {
         var tts: OfflineTts? = null
         val tmp = File(cacheDir, "onevoice-" + System.currentTimeMillis() + ".mp3")
         try {
-            tts = OfflineTts(config = OfflineTtsConfig(model = modelConfig))
-            val sampleRate = tts.sampleRate()
+            val engine = OfflineTts(config = OfflineTtsConfig(model = modelConfig))
+            tts = engine
+            val sampleRate = engine.sampleRate()
             if (sampleRate <= 0) throw IllegalStateException("Invalid voice sampling rate.")
             NativeMp3(tmp, sampleRate).use { mp3 ->
                 for (i in sections.indices) {
                     if (cancel.get()) break
                     val section = sections[i]
                     status("Generating " + (i + 1) + " of " + sections.size + " sections", (i * 100 / sections.size))
-                    val audio = tts.generate(section.first, sid = voice.speakerId, speed = speed)
+                    val audio = engine.generate(section.first, sid = voice.speakerId, speed = speed)
                     if (audio.sampleRate != sampleRate || audio.samples.isEmpty()) {
                         throw IllegalStateException("The speech engine produced invalid audio.")
                     }
