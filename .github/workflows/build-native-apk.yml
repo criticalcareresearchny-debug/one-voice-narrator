@@ -1,0 +1,97 @@
+name: Build One Voice Native APK
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-native-apk.yml'
+      - 'android-native/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - name: Check out One Voice
+        uses: actions/checkout@v4
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android tools
+        uses: android-actions/setup-android@v3
+      - name: Install Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Install Android SDK and NDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;26.3.11579264" "cmake;3.22.1"
+      - name: Fetch official Sherpa-ONNX Android JNI libraries (arm64)
+        working-directory: android-native
+        run: |
+          set -eux
+          curl -fL --retry 3 --silent --show-error \
+            -o /tmp/sherpa-onnx-android.tar.bz2 \
+            'https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.8/sherpa-onnx-v1.13.8-android.tar.bz2'
+          mkdir -p /tmp/onevoice-sherpa app/src/main/jniLibs/arm64-v8a
+          tar xjf /tmp/sherpa-onnx-android.tar.bz2 -C /tmp/onevoice-sherpa
+          find /tmp/onevoice-sherpa -maxdepth 5 -name 'libsherpa-onnx-jni.so' -print
+          LIBDIR=$(find /tmp/onevoice-sherpa -type f -path '*/arm64-v8a/libsherpa-onnx-jni.so' -printf '%h\n' -quit)
+          test -n "$LIBDIR"
+          cp -v "$LIBDIR"/*.so app/src/main/jniLibs/arm64-v8a/
+          test -s app/src/main/jniLibs/arm64-v8a/libsherpa-onnx-jni.so
+          test -s app/src/main/jniLibs/arm64-v8a/libonnxruntime.so
+      - name: Fetch matching official Sherpa Kotlin speech API
+        working-directory: android-native
+        run: |
+          mkdir -p app/src/main/java/com/k2fsa/sherpa/onnx
+          curl -fL --retry 3 --silent --show-error \
+            -o app/src/main/java/com/k2fsa/sherpa/onnx/Tts.kt \
+            'https://raw.githubusercontent.com/k2-fsa/sherpa-onnx/v1.13.8/sherpa-onnx/kotlin-api/Tts.kt'
+          grep -q 'class OfflineTts' app/src/main/java/com/k2fsa/sherpa/onnx/Tts.kt
+      - name: Fetch quantized Kokoro voices and model
+        working-directory: android-native
+        run: |
+          set -eux
+          curl -fL --retry 3 --silent --show-error \
+            -o /tmp/kokoro-int8.tar.bz2 \
+            'https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-int8-multi-lang-v1_0.tar.bz2'
+          mkdir -p /tmp/onevoice-model app/src/main/assets/kokoro
+          tar xjf /tmp/kokoro-int8.tar.bz2 -C /tmp/onevoice-model
+          MODEL=$(find /tmp/onevoice-model -type f -name 'model.int8.onnx' -printf '%h\n' -quit)
+          test -n "$MODEL"
+          cp -a "$MODEL"/. app/src/main/assets/kokoro/
+          test $(wc -c < app/src/main/assets/kokoro/model.int8.onnx) -gt 60000000
+          test -s app/src/main/assets/kokoro/voices.bin
+          test -s app/src/main/assets/kokoro/tokens.txt
+          test -d app/src/main/assets/kokoro/espeak-ng-data
+          ls -lh app/src/main/assets/kokoro/model.int8.onnx app/src/main/assets/kokoro/voices.bin
+      - name: Fetch native Shine MP3 encoder source
+        working-directory: android-native
+        run: |
+          git clone --depth 1 https://github.com/toots/shine.git app/src/main/cpp/shine
+          test -s app/src/main/cpp/shine/src/lib/layer3.h
+          cp app/src/main/cpp/shine/COPYING app/src/main/assets/SHINE_LICENSE.txt
+      - name: Assemble native APK
+        working-directory: android-native
+        run: gradle --no-daemon --stacktrace :app:assembleDebug
+      - name: Inspect APK metadata
+        working-directory: android-native
+        run: |
+          test -s app/build/outputs/apk/debug/app-debug.apk
+          ls -lh app/build/outputs/apk/debug/app-debug.apk
+          unzip -l app/build/outputs/apk/debug/app-debug.apk | grep -E 'libsherpa-onnx-jni.so|libonevoice-mp3.so|model.int8.onnx'
+      - name: Publish installable Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneVoice-Native-Android-APK
+          path: android-native/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+          if-no-files-found: error
+          compression-level: 0
