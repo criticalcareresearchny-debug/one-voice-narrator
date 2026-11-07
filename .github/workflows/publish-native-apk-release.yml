@@ -1,0 +1,43 @@
+name: Publish One Voice Native beta APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-native-apk-release.yml'
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Retrieve verified API Connect APK build
+        uses: actions/download-artifact@v4
+        with:
+          name: OneVoice-Native-Android-APK
+          run-id: 42330705700
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: release-assets
+      - name: Verify and name the APK
+        run: |
+          test -s release-assets/app-debug.apk
+          SIZE=$(wc -c < release-assets/app-debug.apk)
+          echo "APK size: ${SIZE} bytes"
+          test "$SIZE" -gt 150000000
+          mv release-assets/app-debug.apk release-assets/OneVoice-Native-API-Connect.apk
+          sha256sum release-assets/OneVoice-Native-API-Connect.apk
+      - name: Create direct APK download on GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="onevoice-native-api-connect-v0.1.0-beta1"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" release-assets/OneVoice-Native-API-Connect.apk --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$tag" release-assets/OneVoice-Native-API-Connect.apk \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "One Voice Native — API Connect beta 0.1" \
+              --notes "First test APK with free offline six-voice narration, background foreground-service processing, 0.70–1.50x speed, MP3 export, Share target and user-confirmed Android API Connect. This is a debug-signed BETA, compiled and packaged by GitHub Actions; on-device narration and API callbacks have not been verified on a Samsung device. Install as One Voice Native, separately from the working PWA. This direct download avoids ChatGPT file-library links."
+          fi
