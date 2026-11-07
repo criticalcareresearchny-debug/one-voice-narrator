@@ -5,7 +5,12 @@ workers_dev = true
 keep_vars = true
 
 [vars]
-# Do not set any credentials or narration text in this file.
-# Set these to the PRIVATE GitHub processing repository you create.
+# Public mode explicitly requested by repository owner. IMPORTANT:
+# Github Actions inputs, job logs, and generated MP3 artifacts are accessible
+# to people with read access to this public repository. Do not send private text.
 GITHUB_OWNER = "criticalcareresearchny-debug"
-GITHUB_REPO = "onevoice-private-narration"
+GITHUB_REPO = "one-voice-narrator"
+ALLOW_PUBLIC_PROCESSOR = "true"
+
+# Never store ONEVOICE_API_KEY or GITHUB_API_TOKEN here.
+# If deploying the optional Worker, set them as encrypted Worker secrets.
