@@ -7,6 +7,7 @@ A **basic, six-voice, client-side text-to-speech website**. Paste your video scr
 - Six English narrators: American female `af_heart` and `af_bella`; American male `am_michael` and `am_fenrir`; British female `bf_emma`; British male `bm_george`
 - Create a short voice sample without replacing your script; listen before recording longer narration
 - Remembers the last selected voice on the device
+- Adjustable 0.70×–1.50× recording speed, saved on the device, applied to previews and exported MP3s
 - Long text divided automatically into small sections; no imposed character count or quota
 - MP3 output at 24 kHz / 96 kbps mono
 - Voice synthesizes on the user's device, avoiding paid server/API usage
@@ -16,13 +17,13 @@ A **basic, six-voice, client-side text-to-speech website**. Paste your video scr
 
 ## Important limits (please read)
 
-This is a **prototype**, not a verified published service. It has been statically checked and tested with a simulated speech engine; true speech synthesis **has not been end-to-end tested** on an actual Android phone or from external CDN resources in the build environment. Model download, browser support, and performance must be tested after publication. GitHub Pages publishes the static files; it does not run speech synthesis. There is no app-imposed character quota, but phone processing time, memory, browser tab suspensions, and downloaded-file sizes are real practical limits. Very long narration may be much better on a desktop computer.
+This is an **early prototype** hosted through GitHub Pages. A user test on Android showed that the original CDN-loaded speech library crashed with a Node filesystem compatibility error. The app now uses a browser-targeted bundle built through GitHub Actions. The updated audio generation is awaiting re-testing on Android; no working narration should be assumed until an MP3 is actually created. Model download, browser support, and performance must be tested after publication. GitHub Pages publishes the static files; it does not run speech synthesis. There is no app-imposed character quota, but phone processing time, memory, browser tab suspensions, and downloaded-file sizes are real practical limits. Very long narration may be much better on a desktop computer.
 
 First use needs network access to download the Kokoro model (~92 MB quantized model plus other files), JS libraries and WASM dependencies. Keeping the tab open while generating is important. Offline use is not guaranteed: the page and dependencies rely on browser caching and may be evicted. The generated audio and script are not sent to an external narration API, but model/library resources load from external services.
 
 ## Publish for free using GitHub Pages
 
-**You only upload TWO files: `index.html` and `voice-worker.js`**. Do not upload the ZIP file without extracting it.
+The existing GitHub repository is already created and its GitHub Pages deployment is configured. ChatGPT uploads the app source and changes the code directly through the connected GitHub account. No manual upload is normally necessary.
 
 1. Sign in to [github.com](https://github.com/) and create a **new public repository**, e.g. `one-voice-narrator`.
 2. In the repository, choose **Add file → Upload files**. Upload **`index.html`** and **`voice-worker.js`** into the repository's top level (not a subfolder). Commit them.
@@ -38,9 +39,10 @@ GitHub Pages is free for static sites hosted in public repositories on the Free 
 ## How the voice works
 
 - `index.html`: website, text splitter, progress UI, MP3 encoder and audio download
-- `voice-worker.js`: imports `kokoro-js` and downloads Kokoro ONNX weights (runs CPU/WASM in browser)
+- `voice-worker.js`: imports the local browser-built speech library, downloads Kokoro ONNX weights, and renders audio with the chosen voice and speed (CPU/WASM)
 - MP3 uses `lamejs` 1.2.1 loaded dynamically from jsDelivr on first generation
-- Voice library is loaded from esm.sh and Kokoro weights from Hugging Face's model hosting; no API key
+- The browser-compatible JS bundle is committed under `vendor/kokoro-browser.js` by the free GitHub Actions workflow; Kokoro model weights still load from Hugging Face. No API key or paid speech server.
+- The repository includes a Playwright browser smoke test under `test/tts-smoke.mjs`.
 
 ## Audio usage and licenses
 
@@ -50,13 +52,13 @@ GitHub Pages is free for static sites hosted in public repositories on the Free 
 
 ## Choose a voice
 
-Use the **Choose your English narrator** dropdown on the website. The choice is preserved in this browser. Tap **Create a short voice sample**, then press Play in the audio player. All six voices use the same Kokoro speech model; selecting another may download a small additional voice asset the first time.
+Use the **Choose your English narrator** dropdown on the website. The choice is preserved in this browser. Use the **Narration speed** slider to select 0.70× to 1.50×, then tap **Create a short voice sample**. The selected speed affects the recorded MP3. All six voices use the same Kokoro speech model; selecting another may download a small additional voice asset the first time.
 
 ## Troubleshooting
 
 - `Loading model` takes a long time: first download can be 100 MB or more; give Chrome time on Wi-Fi.
 - MP3 library error: check internet access to jsDelivr.
-- Voice failed to load: check internet access to esm.sh and Hugging Face; disable content blockers for the site.
+- Voice failed to load: update/reopen the installed app, confirm you have the latest GitHub Pages build, and check internet access to Hugging Face; disable content blockers for the site if needed.
 - On Android, keep your screen on and the site visible. Browsers can suspend background tasks, and entry-level phones can run out of memory.
 - To avoid losing work, start with a few sentences, then 1–2 minutes, then gradually longer scripts.
 - `file://` access may not support module workers or model fetches. Publish to GitHub Pages before testing.
@@ -64,6 +66,7 @@ Use the **Choose your English narrator** dropdown on the website. The choice is 
 ## Source notes
 
 This app was newly authored for a simple English-narration workflow. It uses upstream AI speech engine/model components and an MP3 encoder. It contains no trackers, analytics, API keys, backend, or paid endpoints.
+
 ## Install on Android as an app
 
 1. Open the published GitHub Pages site in Chrome on your Android phone.
