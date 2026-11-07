@@ -41,6 +41,12 @@
     .preview-note {font-size:12px;color:var(--muted);margin:7px 0 0}
     #previewBtn {margin:0 0 14px;width:100%}
     .voice-desc {font-size:12px;color:var(--muted)}
+    .speed-control {margin:0 0 16px;padding:14px;background:var(--panel2);border:1px solid #42546d;border-radius:12px}
+    .speed-control .speed-heading {display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:14px}
+    .speed-control output {font-weight:800;color:var(--mint);font-variant-numeric:tabular-nums}
+    .speed-control input[type="range"] {width:100%;margin:12px 0;accent-color:var(--mint);height:24px}
+    .speed-markers {display:flex;justify-content:space-between;color:var(--muted);font-size:12px}
+    .speed-caption {font-size:12px;color:var(--muted);margin:5px 0 0}
     .chip {margin-left:auto;border-radius:100px;color:var(--mint);background:#1e443f;padding:3px 9px;font-size:11px;font-weight:750;white-space:nowrap}
     .name-row {display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:17px}
     .name-row label {font-size:13px;color:var(--muted)}
@@ -112,6 +118,12 @@
         </div>
         <span class="chip">6 VOICES</span>
       </div>
+      <div class="speed-control">
+        <div class="speed-heading"><label for="speed">Narration speed</label><output id="speedValue" for="speed">1.00× · Normal</output></div>
+        <input id="speed" type="range" min="0.70" max="1.50" step="0.05" value="1" aria-describedby="speedHelp">
+        <div class="speed-markers"><span>Slower</span><span>Normal 1.00×</span><span>Faster</span></div>
+        <p class="speed-caption" id="speedHelp">Controls the speed of the recorded voice, including downloaded MP3s.</p>
+      </div>
       <button type="button" id="previewBtn" class="secondary">♫ &nbsp; Create a short voice sample</button>
       <div class="name-row"><label for="filename">Recording name</label><input id="filename" value="my-narration" maxlength="120" autocomplete="off" aria-label="Recording filename"><span class="suffix">.mp3</span></div>
       <button type="button" id="generateBtn" class="primary">♫ &nbsp; Generate narration</button>
@@ -165,7 +177,7 @@
       pendingInstall = null;
       installHelper.style.display = "none";
     });
-    const elements = {script:$("script"), count:$("count"), estimate:$("estimate"), voice:$("voice"), voiceDesc:$("voiceDesc"), preview:$("previewBtn"), filename:$("filename"), generate:$("generateBtn"), stop:$("stopBtn"), progressBox:$("progressBox"), progress:$("progress"), progressLabel:$("progressLabel"), percentage:$("percentage"), detail:$("detail"), message:$("message"), output:$("output"), outputTitle:$("outputTitle"), outputInfo:$("outputInfo"), player:$("player"), download:$("download")};
+    const elements = {script:$("script"), count:$("count"), estimate:$("estimate"), voice:$("voice"), voiceDesc:$("voiceDesc"), speed:$("speed"), speedValue:$("speedValue"), preview:$("previewBtn"), filename:$("filename"), generate:$("generateBtn"), stop:$("stopBtn"), progressBox:$("progressBox"), progress:$("progress"), progressLabel:$("progressLabel"), percentage:$("percentage"), detail:$("detail"), message:$("message"), output:$("output"), outputTitle:$("outputTitle"), outputInfo:$("outputInfo"), player:$("player"), download:$("download")};
     const MODEL_SAMPLE_RATE = 24000;
     const MP3_KBPS = 96;
     const MAX_SECTION_CHARS = 245;
@@ -190,6 +202,8 @@
       elements.script.value = localStorage.getItem("onevoice-script") || "";
       const savedVoice = localStorage.getItem("onevoice-voice");
       if (savedVoice && VOICES[savedVoice]) elements.voice.value = savedVoice;
+      const savedSpeed = Number(localStorage.getItem("onevoice-speed"));
+      if (Number.isFinite(savedSpeed) && savedSpeed >= 0.7 && savedSpeed <= 1.5) elements.speed.value = savedSpeed.toFixed(2);
     } catch (_) {}
     function updateVoiceDescription() { elements.voiceDesc.textContent = VOICES[elements.voice.value]?.detail || "English narrator"; }
     elements.voice.addEventListener("change",()=>{
@@ -197,13 +211,24 @@
       try { localStorage.setItem("onevoice-voice",elements.voice.value); } catch (_) {}
     });
     updateVoiceDescription();
-    updateCounts();
+    function speechSpeed() { return Math.min(1.5, Math.max(0.7, Number(elements.speed.value) || 1)); }
+    function updateSpeed() {
+      const speed = speechSpeed();
+      const suffix = Math.abs(speed - 1) < 0.001 ? "Normal" : (speed < 1 ? "Slower" : "Faster");
+      elements.speedValue.textContent = speed.toFixed(2) + "× · " + suffix;
+      updateCounts();
+    }
+    elements.speed.addEventListener("input", () => {
+      updateSpeed();
+      try { localStorage.setItem("onevoice-speed",String(speechSpeed())); } catch (_) {}
+    });
+    updateSpeed();
 
     function updateCounts() {
       const text = elements.script.value;
       const wordCount = (text.match(/\S+/g) || []).length;
       elements.count.textContent = `${text.length.toLocaleString()} characters · ${wordCount.toLocaleString()} words`;
-      const minutes = wordCount / 145;
+      const minutes = wordCount / (145 * speechSpeed());
       elements.estimate.textContent = wordCount ? `Estimated narration: about ${minutes < 1 ? Math.max(1, Math.round(minutes * 60)) + " sec" : (Math.round(minutes * 10) / 10) + " min"}` : "Estimated narration: —";
     }
     elements.script.addEventListener("input", () => {
@@ -241,6 +266,7 @@
       elements.generate.disabled = value;
       elements.preview.disabled = value;
       elements.voice.disabled = value;
+      elements.speed.disabled = value;
       elements.stop.style.display = value ? "block" : "none";
       elements.script.readOnly = value;
       elements.filename.disabled = value;
@@ -302,11 +328,11 @@
       catch (err) { discardWorker(); throw err; }
       finally { initPromise=null; }
     }
-    function speak(text, id, voice) {
+    function speak(text, id, voice, speed) {
       if (!worker || !modelReady) return Promise.reject(new Error("Voice engine is not ready."));
       return new Promise((resolve,reject) => {
         activeRequest={kind:"speak",id,resolve,reject};
-        worker.postMessage({type:"speak",text,id,voice});
+        worker.postMessage({type:"speak",text,id,voice,speed});
       });
     }
 
@@ -392,6 +418,7 @@
     async function generate(preview=false) {
       if (running) return;
       const voice = elements.voice.value;
+      const speed = speechSpeed();
       if (!VOICES[voice]) {showError("Please choose a supported English voice.");return;}
       const script = preview ? "Beyond the quiet hills, the stars appeared one by one, and a new adventure began." : elements.script.value.trim();
       if (!script) {showError("First, paste or type your narration script into the text box.");elements.script.focus();return;}
@@ -416,7 +443,7 @@
         for (let i=0;i<sections.length;i++) {
           if (stopRequested) break;
           setProgress("Generating your narration",`Reading section ${(i+1).toLocaleString()} of ${sections.length.toLocaleString()}. Keep this tab visible.`,i/sections.length*100);
-          const result=await speak(sections[i].text,i,voice);
+          const result=await speak(sections[i].text,i,voice,speed);
           if (result.sampleRate!==MODEL_SAMPLE_RATE) throw new Error(`Unexpected sample rate: ${result.sampleRate}. Expected ${MODEL_SAMPLE_RATE} Hz.`);
           appendPcm(encoder,parts,new Float32Array(result.samples));
           appendSilence(encoder,parts,sections[i].pause);
